@@ -30,7 +30,7 @@ public final class UpdateFileProvider extends ContentProvider {
         String[] cols = projection == null ? new String[]{OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE} : projection;
         MatrixCursor cursor = new MatrixCursor(cols); Object[] row = new Object[cols.length];
         for (int i=0;i<cols.length;i++) {
-            if (OpenableColumns.DISPLAY_NAME.equals(cols[i])) row[i] = "HandyCode-update.apk";
+            if (OpenableColumns.DISPLAY_NAME.equals(cols[i])) row[i] = "驿拾包裹更新.apk";
             else if (OpenableColumns.SIZE.equals(cols[i])) row[i] = apk(getContext()).length();
         }
         cursor.addRow(row); return cursor;

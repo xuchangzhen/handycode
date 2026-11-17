@@ -23,7 +23,8 @@ java -cp "$bt/lib/d8.jar" com.android.tools.r8.D8 --lib "$jar" --min-api 26 --ou
 "$bt/zipalign" -f 4 "$work/base.apk" "$work/aligned.apk"
 key="$project/.local/macos-test-only.keystore"
 if [ ! -f "$key" ]; then keytool -genkeypair -keystore "$key" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 365 -dname 'CN=Local Test Only' -noprompt; fi
-output="$project/dist/HandyCode-0.9.0-test.apk"
+version=$(python3 -c 'import xml.etree.ElementTree as e; print(e.parse("app/src/main/AndroidManifest.xml").getroot().attrib["{http://schemas.android.com/apk/res/android}versionName"])')
+output="$project/dist/HandyCode-$version-test.apk"
 java -jar "$bt/lib/apksigner.jar" sign --ks "$key" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out "$output" "$work/aligned.apk"
 java -jar "$bt/lib/apksigner.jar" verify --verbose "$output"
 "$bt/aapt" dump badging "$output" | head -5

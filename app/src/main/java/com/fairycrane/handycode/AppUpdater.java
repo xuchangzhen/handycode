@@ -96,7 +96,7 @@ final class AppUpdater {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         if (Build.VERSION.SDK_INT >= 26 && !activity.getPackageManager().canRequestPackageInstalls()) {
             new AlertDialog.Builder(activity).setTitle("允许安装更新")
-                .setMessage("请在系统设置中允许 HandyCode 安装应用，然后返回完成更新。")
+                .setMessage("请在系统设置中允许驿拾包裹安装应用，然后返回完成更新。")
                 .setNegativeButton("取消", null).setPositiveButton("打开设置", (d,w) -> {
                     awaitingInstallPermission = true;
                     try { activity.startActivityForResult(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
