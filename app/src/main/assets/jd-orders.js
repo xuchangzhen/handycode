@@ -8,20 +8,50 @@
    var m=String(text).match(/(?:取件码|提货码|取货码|凭码|自提码)[:：\s]*([A-Za-z0-9-]{3,12})(?![A-Za-z0-9-])/);
    return m?m[1]:'';
   }
+  function events(value) {
+   if(!Array.isArray(value))return [];
+   return value.slice(0,200).map(function(item,index){
+    if(!item || typeof item!=='object')return null;
+    var text=clean(item.wlStateDesc,1000).trim(), raw=item.createTime, epoch=NaN, shown='';
+    if(!text)return null;
+    if(typeof raw==='number' && Number.isFinite(raw)) {
+     epoch=raw>=1e12?raw:raw>=1e9?raw*1000:NaN;
+     if(!Number.isFinite(epoch)||epoch>8640000000000000)return null;
+     shown=new Date(epoch).toISOString();
+    } else if(typeof raw==='string') {
+     shown=raw.slice(0,80).trim();
+     // The JD H5 time without an offset is a China local time; invalid dates stay unparsed.
+     var match=shown.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+     if(match){
+      var parts=match.slice(1).map(function(v){return Number(v||0);});
+      var utc=Date.UTC(parts[0],parts[1]-1,parts[2],parts[3],parts[4],parts[5]);
+      var check=new Date(utc);
+      if(check.getUTCFullYear()===parts[0]&&check.getUTCMonth()===parts[1]-1&&check.getUTCDate()===parts[2]
+          &&check.getUTCHours()===parts[3]&&check.getUTCMinutes()===parts[4]&&check.getUTCSeconds()===parts[5])epoch=utc-8*3600000;
+     } else if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(shown))epoch=Date.parse(shown);
+    }
+    if(!Number.isFinite(epoch))return null;
+    return {time:shown,epoch:epoch,text:text,index:index};
+   }).filter(Boolean).sort(function(a,b){return b.epoch-a.epoch||a.index-b.index;});
+  }
   function consume(root) {
    if(!root||!root.body||!Array.isArray(root.body.orderList))return;
    var rows=[],seen=Object.create(null);
    root.body.orderList.slice(0,100).forEach(function(o){
-    if(!o||!o.orderId||seen[o.orderId])return;
+    if(!o||!o.orderId)return;
     var status=clean(o.orderStatusInfo&&o.orderStatusInfo.orderStatusName,100);
     if(/取消|关闭|退款/.test(status))return;
     var p=o.progressInfo||{},text=clean(p.content,1500),tip=clean(p.tip,500);
     // Only filter explicit instant-delivery labels, not ordinary JD delivery.
     if(/即时配送|小时达|同城急送/.test(status+' '+text+' '+tip))return;
     var goods=Array.isArray(o.wareInfoList)?o.wareInfoList[0]:null;
+    var tracking=clean(p.carriageId,100).trim(), carrier=clean(p.carrier,100).trim();
+    var identity=String(o.orderId)+'\u0000'+tracking;
+    if(seen[identity])return;
     rows.push({id:String(o.orderId).slice(0,80),name:clean(goods&&goods.wareName,180)||'京东订单',
-     status:status,detail:text,code:code(text+' '+status+' '+tip)});
-    seen[o.orderId]=true;
+     status:status,detail:text,code:code(text+' '+status+' '+tip),tracking:tracking,carrier:carrier,
+     timeline:events(p.tracePointVOList)});
+    seen[identity]=true;
    });
    state.orders=rows;state.captured=true;state.revision++;
   }

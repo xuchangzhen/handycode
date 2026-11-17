@@ -55,3 +55,19 @@ emptyResponse.listeners.forEach(fn=>fn.call(emptyResponse));
 assert.equal(empty.ctx.HandyJdOrders.snapshot().ready,true,'Successful empty response is ready');
 assert.equal(empty.ctx.HandyJdOrders.snapshot().problem,'');
 console.log('JD order capture, extraction, cancellation, deduplication, login and origin checks passed');
+// Synthetic, explicit logistics fields; no node is invented for invalid timestamps.
+const detailed=fixture();const detailXhr=new detailed.Xhr();detailXhr.send();
+detailXhr.responseText=JSON.stringify({body:{orderList:[
+ {orderId:'split',progressInfo:{content:'运输中',carriageId:'FAKE-WAY-1',carrier:'虚构快递',tracePointVOList:[
+  {createTime:'2026-02-05 12:00:00',wlStateDesc:'虚构较晚节点'},
+  {createTime:'2026-02-04 12:00:00',wlStateDesc:'虚构较早节点'},
+  {createTime:'2026-02-30 12:00:00',wlStateDesc:'无效时间'},
+  {createTime:'not-a-time',wlStateDesc:'无效时间'},
+  {createTime:1e100,wlStateDesc:'越界时间'}]}},
+ {orderId:'split',progressInfo:{content:'派送中',carriageId:'FAKE-WAY-2'}}
+]}});detailXhr.listeners.forEach(fn=>fn.call(detailXhr));
+const enriched=detailed.ctx.HandyJdOrders.snapshot().orders;
+assert.equal(enriched.length,2,'Distinct tracking numbers on one order are preserved');
+assert.equal(enriched[0].tracking,'FAKE-WAY-1');assert.equal(enriched[0].carrier,'虚构快递');
+assert.equal(enriched[0].timeline.length,2);assert.equal(enriched[0].timeline[0].text,'虚构较晚节点');
+assert.ok(enriched[0].timeline[0].epoch>enriched[0].timeline[1].epoch);

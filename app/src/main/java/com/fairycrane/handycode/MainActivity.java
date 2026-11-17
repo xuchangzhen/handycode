@@ -132,6 +132,9 @@ public final class MainActivity extends Activity {
     private SwitchMotion switchMotion;
     private android.animation.ValueAnimator switchAnimation;
     private boolean selectionInitialized, pageDragging, activityResumed;
+    private static volatile boolean parcelForeground, parcelJdVisible;
+    static boolean isForegroundForParcelSync() { return parcelForeground; }
+    static boolean isJdVisibleForParcelSync() { return parcelJdVisible; }
     private final boolean[] opened = new boolean[PAGE_COUNT];
     private float dragStart;
     private PickupLoadingView transitionPanel;
@@ -376,7 +379,8 @@ public final class MainActivity extends Activity {
         int restored = state == null ? -1 : tabIndexForKey(state.getString(KEY_LAST_TAB));
         selected = restored >= 0 ? restored : initialTab(getIntent());
         switchMotion = new SwitchMotion(selected, PAGE_COUNT);
-        packageRepository = new PackageRepository(this);
+        packageRepository = PackageRepository.shared(this);
+        BackgroundJdSync.restoreSchedule(this);
         buildUi();
         applyTheme();
         SiteDataClearer.observe(logoutListener);
@@ -511,7 +515,7 @@ public final class MainActivity extends Activity {
         packageButton = label("包裹", 13, AppTheme.accentText(dark), false);
         packageButton.setPadding(dp(8), dp(8), dp(8), dp(8));
         packageButton.setContentDescription("打开包裹总览");
-        packageButton.setOnClickListener(v -> new PackageOverview(this, packageRepository, isDark()).show());
+        packageButton.setOnClickListener(v -> showPackageOverview());
         header.addView(packageButton);
         themeButton = new GlassThemeSwitch(this, dark);
         themeButton.setOnClickListener(v -> toggleThemeMode());
@@ -837,6 +841,72 @@ public final class MainActivity extends Activity {
         browserFrame.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
     }
 
+    private void showPackageOverview() {
+        PackageOverview overview = new PackageOverview(this, packageRepository, isDark(), this::refreshJdOrdersFromOverview, this::toggleParcelNotifications, this::toggleJdBackground, this::toggleJdStartup);
+        overview.show();
+        if (selected != TAB_TAOBAO && selected != TAB_PDD) return;
+        final String kind = selected == TAB_TAOBAO ? "淘宝" : "拼多多";
+        final String script;
+        try { script = WebAssets.readText(getAssets(), "pickup-snapshot.js"); }
+        catch (java.io.IOException e) { overview.setPickupPreview(kind, null); return; }
+        final long cacheGeneration = packageRepository.generation();
+        android.webkit.ValueCallback<String> callback = result -> {
+            try {
+                org.json.JSONObject data = new org.json.JSONObject(result);
+                org.json.JSONObject capture = data.optJSONObject("capture");
+                if (data.optBoolean("ready") && kind.equals(data.optString("kind")) && capture != null) {
+                    if (cacheGeneration != packageRepository.generation()) packageRepository.rememberStationCapture(kind, capture);
+                    else packageRepository.acceptStation(kind, capture);
+                }
+                overview.setPickupPreview(kind, data);
+            }
+            catch (Exception e) { overview.setPickupPreview(kind, null); }
+        };
+        if (selected == TAB_PDD) pddPage.samplePickupProjection(script, callback);
+        else {
+            final WebView view = browser;
+            if (!combinedDisplayed || view == null || !sameIdentityPage(view.getUrl())) { callback.onReceiveValue("null"); return; }
+            final String url = view.getUrl();
+            view.evaluateJavascript(script, result -> {
+                if (browser != view || !java.util.Objects.equals(url, view.getUrl()) || !combinedDisplayed) callback.onReceiveValue("null");
+                else callback.onReceiveValue(result);
+            });
+        }
+    }
+
+    private void toggleJdStartup() {
+        BackgroundJdSync.setStartupEnabled(this, !BackgroundJdSync.startupEnabled(this));
+    }
+    private void toggleJdBackground() {
+        if (!BackgroundJdSync.setEnabled(this, !BackgroundJdSync.enabled(this)))
+            android.widget.Toast.makeText(this, "无法安排后台任务，请稍后重试", android.widget.Toast.LENGTH_SHORT).show();
+    }
+    private static final int REQUEST_PARCEL_NOTIFICATIONS = 431;
+    private void toggleParcelNotifications() {
+        if (PackageNotificationManager.enabled(this)) {
+            PackageNotificationManager.setEnabled(this, false);
+        } else if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, REQUEST_PARCEL_NOTIFICATIONS);
+        } else {
+            PackageNotificationManager.setEnabled(this, true);
+        }
+    }
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_PARCEL_NOTIFICATIONS) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            PackageNotificationManager.setEnabled(this, granted);
+            android.widget.Toast.makeText(this, granted ? "到件提醒已开启" : "未授予通知权限，提醒保持关闭", android.widget.Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void refreshJdOrdersFromOverview() {
+        if (SiteDataClearer.isBusy()) return;
+        jdPage.requestOrderRefresh();
+        if (selected == TAB_JD) jdPage.showPage(); else selectPage(TAB_JD);
+    }
+
     private void selectPage(int index) {
         if (SiteDataClearer.isBusy()) return;
         int target = Math.max(0, Math.min(PAGE_COUNT - 1, index));
@@ -974,6 +1044,8 @@ public final class MainActivity extends Activity {
         selectionInitialized = true;
         boolean changed = selected != target;
         selected = target;
+        parcelJdVisible = activityResumed && target == TAB_JD;
+        if (parcelJdVisible) BackgroundJdSync.stopForJdPage();
         updateTaobaoDeadline();
         rememberTab(target);
         switchMotion.commit(target);
@@ -1127,6 +1199,11 @@ public final class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
         TaobaoLoginTheme.apply(web, isDark());
+        if (!popup) try {
+            if (androidx.webkit.WebViewFeature.isFeatureSupported("DOCUMENT_START_SCRIPT"))
+                androidx.webkit.WebViewCompat.addDocumentStartJavaScript(web, WebAssets.readText(getAssets(), "station-capture.js"),
+                    java.util.Collections.singleton("https://pages-fast.m.taobao.com"));
+        } catch (java.io.IOException | RuntimeException | LinkageError ignored) { /* Existing official page remains available. */ }
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (UrlPolicy.LOCAL_LOGOUT_ACTION.equals(request.getUrl().toString())) {
@@ -1518,6 +1595,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onPause() {
         activityResumed = false;
+        parcelForeground = false;
+        parcelJdVisible = false;
         themePreview = false;
         if (themeTransition != null) themeTransition.cancel();
         updateTaobaoDeadline();
@@ -1539,6 +1618,11 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         activityResumed = true;
+        parcelForeground = true;
+        parcelJdVisible = selected == TAB_JD;
+        BackgroundJdSync.stopForForeground();
+        if (parcelJdVisible) BackgroundJdSync.stopForJdPage();
+        BackgroundJdSync.scheduleStartupOnce(this);
         updateTaobaoDeadline();
         scanHandler.removeCallbacks(scanWatch);
         scanHandler.post(scanWatch);

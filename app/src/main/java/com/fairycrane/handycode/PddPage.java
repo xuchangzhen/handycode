@@ -57,6 +57,19 @@ final class PddPage extends LinearLayout {
     private boolean projectionActive;
     private boolean dark;
 
+    void samplePickupProjection(String script, android.webkit.ValueCallback<String> callback) {
+        final WebView view = web;
+        if (view == null || !isPackageUrl(view.getUrl()) || layoutWorkflow || destroyed) {
+            callback.onReceiveValue("null"); return;
+        }
+        final long token = navigation;
+        view.evaluateJavascript(script, result -> {
+            if (destroyed || view != web || token != navigation || !isPackageUrl(view.getUrl()) || layoutWorkflow)
+                callback.onReceiveValue("null");
+            else callback.onReceiveValue(result);
+        });
+    }
+
     void checkVisibleScanCode(android.webkit.ValueCallback<String> callback) {
         if (web == null || layoutWorkflow || cover.getVisibility() == View.VISIBLE || !pageCommitted) {
             callback.onReceiveValue("false");
@@ -285,6 +298,11 @@ final class PddPage extends LinearLayout {
         settings.setLoadWithOverviewMode(true);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
+        try {
+            if (androidx.webkit.WebViewFeature.isFeatureSupported("DOCUMENT_START_SCRIPT"))
+                androidx.webkit.WebViewCompat.addDocumentStartJavaScript(web, WebAssets.readText(getContext().getAssets(), "station-capture.js"),
+                    java.util.Collections.singleton("https://m.pinduoduo.net"));
+        } catch (java.io.IOException | RuntimeException | LinkageError ignored) { /* Keep the original page usable. */ }
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (UrlPolicy.LOCAL_LOGOUT_ACTION.equals(request.getUrl().toString())) {

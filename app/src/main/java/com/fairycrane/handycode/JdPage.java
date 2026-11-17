@@ -53,6 +53,7 @@ final class JdPage extends FrameLayout {
     private WebView web;
     private boolean dark, paused = true, destroyed, polling, inFlight, loading = true;
     private boolean loginVisible;
+    private boolean refreshOrdersWhenShown;
     private boolean orderSignedIn, identitySignedIn;
     private boolean verificationVisible;
     private int generation;
@@ -214,7 +215,14 @@ final class JdPage extends FrameLayout {
         if (destroyed) return;
         paused = false;
         identity.resumePage();
-        if (web == null) createWeb();
+        if (web == null) {
+            refreshOrdersWhenShown = false;
+            createWeb(); // The initial load is itself the requested refresh.
+        } else if (refreshOrdersWhenShown) {
+            refreshOrdersWhenShown = false;
+            // Never interrupt a login, verification, or an in-flight refresh.
+            if (!loginVisible && !identity.wantsLogin() && !loading) reload();
+        }
         if (web != null) {
             web.onResume();
             sample();
@@ -332,6 +340,7 @@ final class JdPage extends FrameLayout {
     private void sample() {
         final WebView expected = web;
         final int token = generation;
+        final long cacheToken = packageRepository.generation();
         if (expected == null || paused || destroyed || inFlight) return;
         String url = expected.getUrl();
         if (!JdUrlPolicy.allowed(url)) return;
@@ -363,16 +372,16 @@ final class JdPage extends FrameLayout {
                     postDelayed(() -> {
                         if (destroyed || web != expected || generation != token) return;
                         inFlight = false;
-                        acceptSnapshot(data);
+                        acceptSnapshot(data, cacheToken);
                     }, hold);
-                } else acceptSnapshot(data);
+                } else acceptSnapshot(data, cacheToken);
             } catch (JSONException ignored) {
                 // Incomplete navigation is sampled again until the bounded timeout.
             }
         });
     }
 
-    private void acceptSnapshot(JSONObject data) {
+    private void acceptSnapshot(JSONObject data, long cacheToken) {
         String problem = data.optString("problem");
         if (!problem.isEmpty()) {
             String message = "busy".equals(problem) ? ORDERS_BUSY : "京东官方订单页暂时无法加载，请稍后重试。";
@@ -383,7 +392,7 @@ final class JdPage extends FrameLayout {
         String next = data.toString();
         boolean changed = !next.equals(lastSnapshot) || loading || loginVisible || !error.isEmpty();
         lastSnapshot = next;
-        if (changed) packageRepository.acceptJd(data.optJSONArray("orders"));
+        if (changed && cacheToken == packageRepository.generation()) packageRepository.acceptJd(data.optJSONArray("orders"));
         loading = false;
         loginVisible = false;
         error = "";
@@ -495,6 +504,8 @@ final class JdPage extends FrameLayout {
             body.addView(warning);
         }
     }
+
+    void requestOrderRefresh() { refreshOrdersWhenShown = true; }
 
     private void reload() {
         if (loading || destroyed) return;
