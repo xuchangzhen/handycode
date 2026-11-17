@@ -26,7 +26,8 @@ public final class PackageRecord {
     public boolean sameShipment(PackageRecord other) {
         if (other == null) return false;
         if (!tracking.isEmpty() && !other.tracking.isEmpty())
-            return tracking.toUpperCase(Locale.ROOT).equals(other.tracking.toUpperCase(Locale.ROOT));
+            return !platform.isEmpty() && platform.equals(other.platform)
+                && tracking.toUpperCase(Locale.ROOT).equals(other.tracking.toUpperCase(Locale.ROOT));
         return tracking.isEmpty() && other.tracking.isEmpty() && !platform.isEmpty()
             && platform.equals(other.platform) && !orderId.isEmpty() && orderId.equals(other.orderId);
     }

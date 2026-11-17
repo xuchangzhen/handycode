@@ -87,6 +87,9 @@ Invoke-Javac (Join-Path $buildRoot 'javac-tests.log') @('-encoding','UTF-8','--r
     (Join-Path $sourceRoot 'java\com\fairycrane\handycode\TaobaoLoadGuard.java'),
     (Join-Path $projectRoot 'tests\TaobaoLoadGuardTest.java'),
     (Join-Path $sourceRoot 'java\com\fairycrane\handycode\JdUrlPolicy.java'),
+    (Join-Path $sourceRoot 'java\com\fairycrane\handycode\logistics\PackageRecord.java'),
+    (Join-Path $sourceRoot 'java\com\fairycrane\handycode\logistics\PackageCollection.java'),
+    (Join-Path $projectRoot 'tests\PackageCollectionTest.java'),
     (Join-Path $projectRoot 'tests\JdUrlPolicyTest.java'),
     (Join-Path $projectRoot 'tests\SiteClearQueueTest.java'),
     (Join-Path $projectRoot 'tests\UrlPolicyTest.java'),
@@ -100,6 +103,7 @@ Invoke-Checked $java @('-cp',$testClasses,'SwitchMotionTest')
 Invoke-Checked $java @('-cp',$testClasses,'SiteClearQueueTest')
 Invoke-Checked $java @('-cp',$testClasses,'TaobaoLoadGuardTest')
 Invoke-Checked $java @('-cp',$testClasses,'JdUrlPolicyTest')
+Invoke-Checked $java @('-cp',$testClasses,'PackageCollectionTest')
 foreach ($test in (Get-ChildItem -LiteralPath (Join-Path $projectRoot 'tests') -Filter '*.test.mjs' -File | Sort-Object Name)) {
     Invoke-Checked 'node' @($test.FullName)
 }

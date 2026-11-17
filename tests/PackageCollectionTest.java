@@ -17,11 +17,13 @@ public class PackageCollectionTest {
         PackageCollection c = new PackageCollection();
         c.update(p("jd", "order1", "way1", "001", "运输中", 1));
         c.update(p("jd", "order1", "way2", "001", "派送中", 2));
-        c.update(p("tb", "order2", "way1", "002", "待取件", 3));
+        c.update(p("jd", "order2", "way1", "002", "待取件", 3));
         check(c.sorted().size() == 2 && c.sorted().get(0).status == Status.PICKUP);
         c.update(p("jd", "order3", "", "001", "待发货", 4));
         c.update(p("jd", "order4", "", "001", "待发货", 4));
         check(c.sorted().size() == 4);
+        c.update(p("tb", "order2", "way1", "002", "待取件", 5));
+        check(c.sorted().size() == 5); // No cross-platform merge without carrier evidence.
         c.clear(); check(c.sorted().isEmpty());
         System.out.println("Package status and conservative shipment deduplication passed");
     }
