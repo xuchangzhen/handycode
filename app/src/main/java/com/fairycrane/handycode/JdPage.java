@@ -42,6 +42,7 @@ final class JdPage extends FrameLayout {
     private static final String ORDERS_BUSY = "orders_busy";
     static final long MIN_REFRESH_MS = 320;
     private final Consumer<Boolean> session;
+    private final PackageRepository packageRepository;
     private final ScrollView results;
     private final LinearLayout stack, card, body, heading;
     private final JdIdentityCard identity;
@@ -68,9 +69,10 @@ final class JdPage extends FrameLayout {
         if (!paused && loading) fail("读取订单超时，请稍后重试。");
     };
 
-    JdPage(Context context, Consumer<Boolean> session, Runnable requestLogout) {
+    JdPage(Context context, Consumer<Boolean> session, Runnable requestLogout, PackageRepository packageRepository) {
         super(context);
         this.session = session;
+        this.packageRepository = packageRepository;
         results = new ScrollView(context);
         results.setClipToPadding(false);
         results.setPadding(dp(10), dp(12), dp(10), dp(24));
@@ -346,6 +348,7 @@ final class JdPage extends FrameLayout {
                 if (!data.optString("href").equals(expected.getUrl())) return;
                 if (data.optBoolean("login")) {
                     orderSession(false);
+                    packageRepository.jdFailure("京东需要登录或会话已失效");
                     loginVisible = true;
                     lastSnapshot = "";
                     loading = false;
@@ -380,6 +383,7 @@ final class JdPage extends FrameLayout {
         String next = data.toString();
         boolean changed = !next.equals(lastSnapshot) || loading || loginVisible || !error.isEmpty();
         lastSnapshot = next;
+        if (changed) packageRepository.acceptJd(data.optJSONArray("orders"));
         loading = false;
         loginVisible = false;
         error = "";
@@ -389,6 +393,7 @@ final class JdPage extends FrameLayout {
     }
 
     private void fail(String message) {
+        packageRepository.jdFailure(ORDERS_BUSY.equals(message) ? "京东服务繁忙" : "京东读取失败或超时");
         generation++;
         inFlight = false;
         loading = false;

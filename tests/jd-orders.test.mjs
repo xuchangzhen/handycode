@@ -18,7 +18,8 @@ xhr.responseText=JSON.stringify({body:{orderList:[
  {orderId:'one',progressInfo:{content:'取件码：重复'}},
  {orderId:'two',orderStatusInfo:{orderStatusName:'已取消'},progressInfo:{content:'取件码：123456'}},
  {orderId:'three',progressInfo:{content:'配送中'}},
- {orderId:'four',progressInfo:{tip:'自提码:XYZ987'}}
+ {orderId:'four',progressInfo:{tip:'自提码:XYZ987'}},
+ {orderId:'five',orderStatusInfo:{orderStatusName:'即时配送'},progressInfo:{content:'配送中'}}
 ]}});
 xhr.listeners.forEach(fn=>fn.call(xhr));
 let s=f.ctx.HandyJdOrders.snapshot();

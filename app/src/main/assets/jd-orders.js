@@ -16,6 +16,8 @@
     var status=clean(o.orderStatusInfo&&o.orderStatusInfo.orderStatusName,100);
     if(/取消|关闭|退款/.test(status))return;
     var p=o.progressInfo||{},text=clean(p.content,1500),tip=clean(p.tip,500);
+    // Only filter explicit instant-delivery labels, not ordinary JD delivery.
+    if(/即时配送|小时达|同城急送/.test(status+' '+text+' '+tip))return;
     var goods=Array.isArray(o.wareInfoList)?o.wareInfoList[0]:null;
     rows.push({id:String(o.orderId).slice(0,80),name:clean(goods&&goods.wareName,180)||'京东订单',
      status:status,detail:text,code:code(text+' '+status+' '+tip)});

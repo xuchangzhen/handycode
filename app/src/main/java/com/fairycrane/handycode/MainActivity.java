@@ -98,6 +98,7 @@ public final class MainActivity extends Activity {
     private FrameLayout browserFrame, pinduoduoFrame;
     private PddPage pddPage;
     private JdPage jdPage;
+    private PackageRepository packageRepository;
     private CainiaoPage cainiaoPage;
     private String combinedMarkup;
     private String combinedGateScript;
@@ -126,6 +127,7 @@ public final class MainActivity extends Activity {
     private final View[] titleRows = new View[PAGE_COUNT];
     private final TextView[] titleLabels = new TextView[PAGE_COUNT];
     private GlassThemeSwitch themeButton;
+    private TextView packageButton;
     private final boolean[] signedIn = new boolean[PAGE_COUNT];
     private SwitchMotion switchMotion;
     private android.animation.ValueAnimator switchAnimation;
@@ -258,6 +260,7 @@ public final class MainActivity extends Activity {
             for (TextView label : titleLabels) {
                 if (label != null) label.setTextColor(AppTheme.ink(!darkInk));
             }
+            if (packageButton != null) packageButton.setTextColor(AppTheme.accentText(!darkInk));
             updateSystemBars(!darkInk);
         }
     }
@@ -373,6 +376,7 @@ public final class MainActivity extends Activity {
         int restored = state == null ? -1 : tabIndexForKey(state.getString(KEY_LAST_TAB));
         selected = restored >= 0 ? restored : initialTab(getIntent());
         switchMotion = new SwitchMotion(selected, PAGE_COUNT);
+        packageRepository = new PackageRepository(this);
         buildUi();
         applyTheme();
         SiteDataClearer.observe(logoutListener);
@@ -504,6 +508,11 @@ public final class MainActivity extends Activity {
         }
         header.addView(titleViewport, new LinearLayout.LayoutParams(0, dp(40), 1f));
 
+        packageButton = label("包裹", 13, AppTheme.accentText(dark), false);
+        packageButton.setPadding(dp(8), dp(8), dp(8), dp(8));
+        packageButton.setContentDescription("打开包裹总览");
+        packageButton.setOnClickListener(v -> new PackageOverview(this, packageRepository, isDark()).show());
+        header.addView(packageButton);
         themeButton = new GlassThemeSwitch(this, dark);
         themeButton.setOnClickListener(v -> toggleThemeMode());
         themeButton.setPreview(new GlassThemeSwitch.Preview() {
@@ -558,7 +567,7 @@ public final class MainActivity extends Activity {
             () -> logoutPage(TAB_PDD));
         pinduoduoFrame.addView(pddPage, new FrameLayout.LayoutParams(-1, -1));
         viewport.addView(pinduoduoFrame, new FrameLayout.LayoutParams(-1, -1));
-        jdPage = new JdPage(this, value -> setSignedIn(TAB_JD, value), () -> logoutPage(TAB_JD));
+        jdPage = new JdPage(this, value -> setSignedIn(TAB_JD, value), () -> logoutPage(TAB_JD), packageRepository);
         viewport.addView(jdPage, new FrameLayout.LayoutParams(-1, -1));
         cainiaoPage = new CainiaoPage(this, () -> selectPage(TAB_TAOBAO), () -> setSignedIn(TAB_TAOBAO, false));
         cainiaoPage.setLoginRequired(getSharedPreferences(PREF_UI, MODE_PRIVATE).getBoolean(KEY_TAOBAO_LOGIN_REQUIRED, false));
