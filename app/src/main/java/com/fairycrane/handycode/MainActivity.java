@@ -99,6 +99,7 @@ public final class MainActivity extends Activity {
     private PddPage pddPage;
     private JdPage jdPage;
     private PackageRepository packageRepository;
+    private PackageOverview packageOverview;
     private AppUpdater appUpdater;
     private CainiaoPage cainiaoPage;
     private String combinedMarkup;
@@ -845,6 +846,7 @@ public final class MainActivity extends Activity {
 
     private void showPackageOverview() {
         PackageOverview overview = new PackageOverview(this, packageRepository, isDark(), this::refreshJdOrdersFromOverview, this::toggleParcelNotifications, this::toggleJdBackground, this::toggleJdStartup, appUpdater::check);
+        packageOverview = overview;
         overview.show();
         if (selected != TAB_TAOBAO && selected != TAB_PDD) return;
         final String kind = selected == TAB_TAOBAO ? "淘宝" : "拼多多";
@@ -904,6 +906,7 @@ public final class MainActivity extends Activity {
         if (requestCode == REQUEST_PARCEL_NOTIFICATIONS) {
             boolean granted = grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
             PackageNotificationManager.setEnabled(this, granted);
+            if (packageOverview != null) packageOverview.refreshSettings();
             android.widget.Toast.makeText(this, granted ? "到件提醒已开启" : "未授予通知权限，提醒保持关闭", android.widget.Toast.LENGTH_SHORT).show();
         }
     }

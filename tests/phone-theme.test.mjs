@@ -78,5 +78,9 @@ for (const [host, path] of [
  assert.equal(document.querySelector('textarea'),input);
  assert.equal(input.value,'WAYBILL-FIXTURE');
  assert.equal(document.documentElement.dataset.hcPackageForm,'pdd');
+ const css=document.getElementById('hc-phone-theme').textContent;
+ assert.match(css,/\.selected-station-container,\.text-area/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.ok(document.querySelector('.submit-btn'),'The official submit action remains in place');
 }
 console.log('PASS: scoped phone forms, reversible themes, idempotence, unchanged inputs, disabled state and official handlers');

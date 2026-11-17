@@ -32,6 +32,7 @@ function fixture({path='/mdkd/package', subframe=false, parcels='empty', delayed
   setTimeout(fn,delay){const id=++timerId;timers.push({fn,delay,id});return id;},clearTimeout(id){const timer=timers.find(task=>task.id===id);if(timer)timer.cancelled=true;},setInterval(fn,delay){intervals.push({fn,delay});return intervals.length;},clearInterval(){}};
  // LinkeDOM exposes assigned window globals through a shared proxy.
  delete window.HandyPddLayout;
+ delete window.next;
  window.matchMedia=()=>({matches:false});
  window.HandyPddRefresh={run(part){refreshCalls.push(part);return new Promise((resolve,reject)=>{pending[part]={resolve,reject};});}};
  window.top=subframe?{}:window;
@@ -43,6 +44,7 @@ function fixture({path='/mdkd/package', subframe=false, parcels='empty', delayed
   flushProjection(){const job=timers.find(task=>task.delay===160&&!task.cancelled);if(job){job.cancelled=true;job.fn();}},
   mountSource(){document.body.appendChild(source);for(const observer of [...observers])if(observer.active)observer.callback();},
   expireBootWait(){for(const task of timers)if(task.delay===15000&&!task.cancelled)task.fn();},
+  expireRouteWait(){for(const task of timers)if(task.delay===8000&&!task.cancelled)task.fn();},
   async finishRefresh(part,error=false){await new Promise(resolve=>setImmediate(resolve));error?pending[part].reject(new Error('test-failure')):pending[part].resolve();await new Promise(resolve=>setImmediate(resolve));const scheduled=timers.splice(0);for(const task of scheduled)if(task.delay===40)task.fn();},
   get reloads(){return reloads;},get clicks(){return clicks;},get backs(){return backs;}};
 }
@@ -143,6 +145,14 @@ const updatedParcels = f.document.getElementById('hc-pdd-parcels');
 assert.match(updatedParcels.textContent,/TEST-456.*测试快递/);
 assert.doesNotMatch(updatedParcels.textContent,/支持退换货|导航|电话|仅支持自助取件|照片|全选|找人代取|通知站长取件/);
 assert.equal(updatedParcels.querySelector('img[alt="checkbox"],img[alt="menu"]'),null);
+pending.insertAdjacentHTML('beforeend','<div class="package-item-details"><div class="package-shipping-name"><span style="border-top:2px solid green;box-shadow:0 0 2px green">测试备注 的快递</span></div><span style="border-top:1px solid green">其他标记</span></div>');
+f.window.HandyPddLayout.update();
+const projected=f.document.getElementById('hc-pdd-parcels');
+const alias=[...projected.querySelectorAll('span')].find(e=>e.textContent==='测试备注 的快递');
+const other=[...projected.querySelectorAll('span')].find(e=>e.textContent==='其他标记');
+assert.equal(alias.style.getPropertyValue('border-top'),'none','Remove the alias border in the projection');
+assert.match(other.style.getPropertyValue('border-top'),/green/,'Unrelated badges retain their own styling');
+assert.match([...pending.querySelectorAll('.package-shipping-name span')].find(e=>e.textContent==='测试备注 的快递').style.getPropertyValue('border-top'),/green/,'The official source is unchanged');
 const phoneFlow=fixture();
 const phoneViewport=phoneFlow.document.querySelector('meta[name="viewport"]');
 phoneViewport.content='width=375,initial-scale=0.96';
@@ -150,6 +160,7 @@ phoneFlow.mutate(phoneViewport);
 const phoneShell=phoneFlow.document.querySelector('#hc-pdd-shell');
 phoneShell.querySelector('.hc-pdd-phone-manage').click();
 assert.equal(phoneFlow.clicks,1,'Phone management still invokes the official action');
+assert.equal(phoneShell.querySelector('.hc-pdd-phone-manage').textContent,'打开中…');
 assert.equal(phoneShell.hidden,false,'The source identity page must not flash during navigation');
 phoneFlow.context.location.pathname='/mdkd/cellPhoneList';
 phoneFlow.window.HandyPddLayout.update();
@@ -158,6 +169,29 @@ phoneFlow.document.querySelector('[class*="identification-code-container"]').rem
 phoneFlow.mutate(phoneFlow.document.getElementById('__next'));
 assert.equal(phoneShell.hidden,true,'The official phone page can appear after the old DOM is gone');
 assert.equal(phoneViewport.content,'width=375,initial-scale=0.96','Restore viewport settings written late by the official page');
+const readyPhone=fixture();
+readyPhone.document.querySelector('.hc-pdd-phone-manage').click();
+readyPhone.context.location.pathname='/mdkd/cellPhoneList';
+readyPhone.document.querySelector('#__next').insertAdjacentHTML('beforeend','<div class="cell-phone-list-info">手机号管理</div>');
+readyPhone.mutate(readyPhone.document.querySelector('.cell-phone-list-info'));
+assert.equal(readyPhone.document.querySelector('#hc-pdd-shell').hidden,true,'Reveal a ready phone page immediately even if the old root remains');
+const parcelFlow=fixture();let pushed='';
+parcelFlow.window.next={router:{push(path){pushed=path;return Promise.resolve(true);}}};
+parcelFlow.document.querySelector('.hc-pdd-add-package').click();
+assert.equal(pushed,'/mdkd/add-package','Use the official router when available');
+assert.equal(parcelFlow.document.querySelector('.hc-pdd-add-package').textContent,'打开中…');
+parcelFlow.context.location.pathname='/mdkd/add-package';
+parcelFlow.window.HandyPddLayout.update();
+assert.equal(parcelFlow.document.querySelector('#hc-pdd-shell').hidden,false,'Do not flash the old page while the form loads');
+parcelFlow.document.querySelector('#__next').insertAdjacentHTML('beforeend','<div class="test_add-package-package__fixture"><textarea></textarea></div>');
+parcelFlow.mutate(parcelFlow.document.querySelector('textarea'));
+assert.equal(parcelFlow.document.querySelector('#hc-pdd-shell').hidden,true,'Reveal the official form when ready');
+const stalled=fixture();stalled.window.next={router:{push(){return Promise.resolve(true);}}};
+stalled.document.querySelector('.hc-pdd-add-package').click();
+stalled.context.location.pathname='/mdkd/add-package';stalled.expireRouteWait();
+assert.equal(stalled.document.querySelector('#hc-pdd-shell').hidden,true,'A stalled transition reveals the official loading or error state');
+const noRouter=fixture();
+assert.equal(noRouter.document.querySelector('.hc-pdd-add-package').getAttribute('href'),'https://m.pinduoduo.net/mdkd/add-package','The normal official link remains available without a router');
 // Background updates keep concrete, visible nodes; there is no persistent
 // opacity-zero backwards-fill CSS to reveal an empty card on the next swipe.
 f=fixture();

@@ -436,10 +436,13 @@ final class PddPage extends LinearLayout {
                     return true;
                 }
                 if (value == null || !value.startsWith("__HANDYCODE_PDD_LAYOUT__:")) return false;
-                if (web == null || !isPackageUrl(web.getUrl())) return true;
-                packageNavigation = true;
-                syncDark(web);
                 String phase = value.substring("__HANDYCODE_PDD_LAYOUT__:".length());
+                if (web == null || !UrlPolicy.isPddAllowed(web.getUrl())) return true;
+                String path = android.net.Uri.parse(web.getUrl()).getPath();
+                if (!isPackageUrl(web.getUrl()) && !("source".equals(phase)
+                        && ("/mdkd/cellPhoneList".equals(path) || "/mdkd/add-package".equals(path)))) return true;
+                packageNavigation = isPackageUrl(web.getUrl());
+                syncDark(web);
                 layoutWorkflow = "source".equals(phase);
                 applyViewport(web, !layoutWorkflow);
                 if ("loading".equals(phase) && !projectionActive) applyProjectionActive();

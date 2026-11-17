@@ -2,7 +2,7 @@
  'use strict';
  if (window.top !== window || location.origin !== 'https://m.pinduoduo.net' || location.pathname !== '/mdkd/package') return;
  if (window.HandyPddLayout) return;
- var source, shell, backBar, sourceMode = false, openingPhoneManagement = false, touching = false, lastTouch = 0;
+ var source, shell, backBar, sourceMode = false, openingPhoneManagement = false, openingPackage = false, touching = false, lastTouch = 0;
  var active = true, pendingParts = 0, projectionTimer = null, sourceObserver;
  var IDENTITY = 1, PARCELS = 2, BOTH = IDENTITY | PARCELS;
  var identitySelector = '[class*="identification-code-container"]';
@@ -132,6 +132,11 @@
     node.childElementCount === 1 && node.firstElementChild.tagName === 'IMG';
  }
  function spaceParcelRow(source, copy) {
+  // The phone alias is informational text, not a selectable badge.
+  if (source.closest('.package-item-details,.package-shipping-name') &&
+      /^.{1,40}的快递$/.test(source.textContent.trim())) {
+   css(copy, {'border-top':'none','border-right':'none','border-bottom':'none','border-left':'none',outline:'none','box-shadow':'none'});
+  }
   if (source.matches('.package-name-address-phone-info,.package-name-address,.package-items,[class*="package-item-wrap__"],[class*="package-item__"],.package-item-details-wrapper')) {
    css(copy, {display:'block',width:'100%',height:'auto','min-width':'0','min-height':'0',margin:'0',padding:'0'});
   }
@@ -339,7 +344,7 @@
  function update(parts) {
   if (!shell || sourceMode) return;
   if (location.pathname !== '/mdkd/package') {
-   if (!openingPhoneManagement || !identityRoot()) workflow(true);
+   if ((!openingPhoneManagement && !openingPackage) || !identityRoot()) workflow(true);
    return;
   }
   if (parts === undefined) parts = BOTH;
@@ -390,7 +395,13 @@
   return (identity ? IDENTITY : 0) | (parcels ? PARCELS : 0);
  }
  function sourceChanged(records) {
-  if (openingPhoneManagement && location.pathname !== '/mdkd/package' && !identityRoot()) {
+  if (openingPackage && location.pathname === '/mdkd/add-package' &&
+      (!identityRoot() || source.querySelector('[class*="add-package-package__"] textarea,.selected-station-container'))) {
+   workflow(true);
+   return;
+  }
+  if (openingPhoneManagement && location.pathname === '/mdkd/cellPhoneList' &&
+      (!identityRoot() || source.querySelector('[class*="cell-phone-list-container__"],.cell-phone-list-info,.bind-new-cell-phone-wrapper,.modify-cell-phone-wrapper'))) {
    workflow(true);
    return;
   }
@@ -485,6 +496,11 @@
  function workflow(show) {
   cardViewport(!show);
   openingPhoneManagement = false;
+  openingPackage = false;
+  var phone = shell && shell.querySelector('.hc-pdd-phone-manage');
+  if (phone) { phone.disabled = false; phone.textContent = '添加手机号'; }
+  var add = shell && shell.querySelector('.hc-pdd-add-package');
+  if (add) { add.removeAttribute('aria-disabled'); add.textContent = '添加包裹'; }
   sourceMode = show;
   document.documentElement.classList.toggle('hc-pdd-source-mode', show);
   shell.hidden = show; backBar.hidden = !show;
@@ -498,6 +514,25 @@
  }
  function clicked(event) {
   var node = event.target, original;
+  var add = node.closest('.hc-pdd-add-package');
+  if (add) {
+   if (openingPackage) { event.preventDefault(); return; }
+   var router = window.next && window.next.router;
+   if (!router || typeof router.push !== 'function') return;
+   event.preventDefault();
+   openingPackage = true; add.setAttribute('aria-disabled', 'true'); add.textContent = '打开中…';
+   var fallback = function () {
+    if (!openingPackage) return;
+    if (location.pathname === '/mdkd/package') location.href = add.href;
+    else workflow(true); // Show the official loading or error state if rendering stalls.
+   };
+   try {
+    var navigation = router.push('/mdkd/add-package');
+    if (navigation && typeof navigation.then === 'function') navigation.then(function (ok) { if (ok === false) fallback(); }, fallback);
+    setTimeout(fallback, 8000);
+   } catch (error) { fallback(); }
+   return;
+  }
   if (node.closest('.hc-pdd-parcel-groups')) { event.preventDefault(); return; }
   if (node.closest('#hc-pdd-identity') && !node.closest('.hc-pdd-tips')) return;
   while (node && node !== shell && !(original = links.get(node))) node = node.parentNode;
@@ -505,8 +540,15 @@
   event.preventDefault();
   if (node.matches('.hc-pdd-phone-manage')) {
    // Keep the combined page visible until the official route is ready.
+   if (openingPhoneManagement) return;
    openingPhoneManagement = true;
-   original.click(); queue(BOTH);
+   node.disabled = true; node.textContent = '打开中…';
+   original.click();
+   setTimeout(function () {
+    if (openingPhoneManagement && location.pathname === '/mdkd/package') {
+     openingPhoneManagement = false; node.disabled = false; node.textContent = '添加手机号';
+    } else if (openingPhoneManagement) workflow(true);
+   }, 8000);
    return;
   }
   // Switch-code controls update in place. Other official actions temporarily

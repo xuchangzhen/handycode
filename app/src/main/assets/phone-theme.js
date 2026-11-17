@@ -50,6 +50,18 @@ html[data-hc-phone-provider="pdd"][data-hc-phone-theme="dark"] input::placeholde
 html[data-hc-phone-provider="pdd"][data-hc-phone-theme="dark"] .cell-phone-button-tip {background:#3c3022!important;color:#ffd19a!important}
 html[data-hc-phone-provider="pdd"][data-hc-phone-theme="dark"] .bind-new-contract-item-content {color:#79b9e8!important}
 
+/* Keep the official inputs, buttons and verification flow; only restyle their surfaces. */
+html[data-hc-phone-provider="pdd"][data-hc-phone-theme="light"] body {background:#f5f6f8!important;color:#242b37!important}
+html[data-hc-phone-provider="pdd"] [class*="cell-phone-list-container__"] {min-height:100vh;background:#f5f6f8}
+html[data-hc-phone-provider="pdd"] :is(.cell-phone-list-info,.cell-phone-list-item,.bind-new-cell-phone-wrapper,.modify-cell-phone-wrapper) {border-radius:16px}
+html[data-hc-phone-provider="pdd"] :is(.cell-phone-list-info,.cell-phone-list-item) {overflow:hidden}
+html[data-hc-phone-provider="pdd"] :is(.bind-new-cell-phone-content-item,.modify-cell-phone-content-item) {border-radius:10px}
+html[data-hc-package-form="pdd"] [class*="add-package-package__"] {box-sizing:border-box;min-height:100vh;background:#f5f6f8;color:#242b37}
+html[data-hc-package-form="pdd"] :is(.selected-station-container,.text-area) {box-sizing:border-box;background:#fff;border:1px solid #e9ecf0;border-radius:16px}
+html[data-hc-package-form="pdd"] :is(.selected-station-container,.text-area,textarea,input) {transition:background-color .2s,border-color .2s,color .2s}
+html[data-hc-package-form="pdd"] :is(textarea,input) {caret-color:#e56c43}
+html[data-hc-package-form="pdd"] textarea::placeholder {color:#929baa;opacity:1}
+@media (prefers-reduced-motion:reduce) {html[data-hc-package-form="pdd"] :is(.selected-station-container,.text-area,textarea,input) {transition:none}}
 html[data-hc-package-form="pdd"] :is(.history-phone-list-wrap,.strategy-list-container,.notice) {display:none!important}
 html[data-hc-package-form="pdd"][data-hc-phone-theme="dark"] [class*="add-package-package__"] {background:#0f1218!important;color:#eceff4!important;min-height:100vh}
 html[data-hc-package-form="pdd"][data-hc-phone-theme="dark"] :is(.selected-station-container,.text-area,.event-modal-content,.event-modal-view-container-center,.query-waybill-modal-container,.rm-modal-content) {background:#181c24!important;color:#eceff4!important;border-color:#303744!important}
