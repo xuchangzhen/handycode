@@ -1,6 +1,10 @@
 package com.fairycrane.handycode.logistics;
 
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.LinkedHashSet;
 
 /** A single known shipment, or a provisional order when the shipment is not known. */
 public final class PackageRecord {
@@ -11,25 +15,69 @@ public final class PackageRecord {
         public final String label;
         Status(String label) { this.label = label; }
     }
-    public final String platform, orderId, tracking, name, detail, pickupCode;
+    public static final class Event {
+        public final String time, text;
+        public final long epoch;
+        public Event(String time, long epoch, String text) { this.time = clean(time); this.epoch = epoch; this.text = clean(text); }
+    }
+    public final String platform, orderId, tracking, name, detail, pickupCode, carrier;
+    public final List<Event> timeline;
+    public final List<String> orderRefs;
     public final Status status;
     public final long updatedAt;
 
     public PackageRecord(String platform, String orderId, String tracking, String name,
             String detail, String pickupCode, Status status, long updatedAt) {
+        this(platform, orderId, tracking, name, detail, pickupCode, status, updatedAt, "", Collections.emptyList());
+    }
+    public PackageRecord(String platform, String orderId, String tracking, String name,
+            String detail, String pickupCode, Status status, long updatedAt, String carrier, List<Event> events) {
+        this(platform, orderId, tracking, name, detail, pickupCode, status, updatedAt, carrier, events, Collections.emptyList());
+    }
+    public PackageRecord(String platform, String orderId, String tracking, String name,
+            String detail, String pickupCode, Status status, long updatedAt, String carrier, List<Event> events, List<String> refs) {
         this.platform = clean(platform); this.orderId = clean(orderId); this.tracking = clean(tracking);
         this.name = clean(name); this.detail = clean(detail); this.pickupCode = clean(pickupCode);
         this.status = status == null ? Status.UNKNOWN : status; this.updatedAt = updatedAt;
+        this.carrier = clean(carrier);
+        List<Event> sorted = new ArrayList<>();
+        if (events != null) for (Event event : events) if (event != null && event.epoch > 0 && !event.text.isEmpty()) sorted.add(event);
+        Collections.sort(sorted, (a, b) -> Long.compare(b.epoch, a.epoch));
+        this.timeline = Collections.unmodifiableList(sorted);
+        LinkedHashSet<String> unique = new LinkedHashSet<>();
+        if (refs != null) for (String ref : refs) if (ref != null && !ref.trim().isEmpty()) unique.add(ref.trim());
+        if (!this.platform.isEmpty() && !this.orderId.isEmpty()) unique.add(this.platform + ":" + this.orderId);
+        this.orderRefs = Collections.unmodifiableList(new ArrayList<>(unique));
     }
     private static String clean(String s) { return s == null ? "" : s.trim(); }
     /** Blank identifiers never imply equality. Pickup codes are deliberately excluded. */
     public boolean sameShipment(PackageRecord other) {
         if (other == null) return false;
         if (!tracking.isEmpty() && !other.tracking.isEmpty())
-            return !platform.isEmpty() && platform.equals(other.platform)
-                && tracking.toUpperCase(Locale.ROOT).equals(other.tracking.toUpperCase(Locale.ROOT));
+            return tracking.toUpperCase(Locale.ROOT).equals(other.tracking.toUpperCase(Locale.ROOT))
+                && (carrier.isEmpty() || other.carrier.isEmpty() || carrier.equalsIgnoreCase(other.carrier))
+                && ((!platform.isEmpty() && platform.equals(other.platform))
+                    || (!carrier.isEmpty() && !other.carrier.isEmpty() && carrier.equalsIgnoreCase(other.carrier)));
         return tracking.isEmpty() && other.tracking.isEmpty() && !platform.isEmpty()
             && platform.equals(other.platform) && !orderId.isEmpty() && orderId.equals(other.orderId);
+    }
+    /** Combine references and actual timeline nodes for a confirmed common shipment. */
+    public PackageRecord merge(PackageRecord incoming) {
+        if (!sameShipment(incoming)) throw new IllegalArgumentException("Different shipments");
+        PackageRecord latest = incoming.updatedAt >= updatedAt ? incoming : this;
+        PackageRecord older = latest == incoming ? this : incoming;
+        List<String> refs = new ArrayList<>(orderRefs); refs.addAll(incoming.orderRefs);
+        List<Event> combined = new ArrayList<>(timeline);
+        for (Event event : incoming.timeline) {
+            boolean duplicate = false;
+            for (Event existing : combined) if (existing.epoch == event.epoch && existing.text.equals(event.text)) { duplicate = true; break; }
+            if (!duplicate && combined.size() < 200) combined.add(event);
+        }
+        Status resolved = latest.status == Status.SIGNED && older.status == Status.PICKUP ? Status.PICKUP : latest.status;
+        String code = !latest.pickupCode.isEmpty() ? latest.pickupCode
+            : resolved == Status.PICKUP && older.status == Status.PICKUP ? older.pickupCode : "";
+        return new PackageRecord(latest.platform, latest.orderId, latest.tracking, latest.name.isEmpty() ? older.name : latest.name,
+            latest.detail, code, resolved, latest.updatedAt, latest.carrier.isEmpty() ? older.carrier : latest.carrier, combined, refs);
     }
     public static Status infer(String text, String pickupCode) {
         String s = clean(text);

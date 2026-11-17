@@ -24,6 +24,32 @@ public class PackageCollectionTest {
         check(c.sorted().size() == 4);
         c.update(p("tb", "order2", "way1", "002", "待取件", 5));
         check(c.sorted().size() == 5); // No cross-platform merge without carrier evidence.
+        PackageRecord events = new PackageRecord("jd", "o", "t", "", "", "", Status.TRANSIT, 1, "虚构快递",
+            java.util.Arrays.asList(new PackageRecord.Event("旧", 10, "旧节点"), new PackageRecord.Event("新", 20, "新节点"), new PackageRecord.Event("无效", 0, "无效")));
+        check(events.timeline.size() == 2 && events.timeline.get(0).text.equals("新节点"));
+        PackageCollection merge = new PackageCollection();
+        merge.update(new PackageRecord("tb", "orderA", "WAY-X", "A", "", "P-1", Status.PICKUP, 1, "虚构物流", null));
+        merge.update(new PackageRecord("jd", "orderB", "WAY-X", "B", "", "", Status.SIGNED, 2, "虚构物流", null));
+        check(merge.sorted().size() == 1 && merge.sorted().get(0).orderRefs.size() == 2);
+        check(merge.sorted().get(0).status == Status.PICKUP);
+        merge.update(new PackageRecord("pdd", "orderC", "WAY-X", "C", "", "", Status.TRANSIT, 3, "另一物流", null));
+        check(merge.sorted().size() == 2); // No merge when carriers differ.
+        merge.update(new PackageRecord("pdd", "orderD", "WAY-X", "D", "", "", Status.TRANSIT, 4, "第三物流", null));
+        check(merge.sorted().size() == 3); // Even the same platform cannot merge conflicting carriers.
+        PackageCollection placeholder = new PackageCollection();
+        placeholder.update(p("jd", "orderZ", "", "", "运输中", 1));
+        placeholder.update(p("jd", "orderZ", "wayA", "", "运输中", 2));
+        placeholder.update(p("jd", "orderZ", "wayB", "", "运输中", 3));
+        check(placeholder.sorted().size() == 2); // A provisional order can split into two shipments.
+        placeholder.update(p("jd", "orderZ", "", "", "运输中", 4));
+        check(placeholder.sorted().size() == 2); // A later order-level response must not duplicate its shipments.
+        PackageCollection alerts = new PackageCollection();
+        PackageRecord incoming = p("jd", "alert-order", "", "FAKE-9", "待取件", 20);
+        check(!alerts.hasNewPickup(java.util.Arrays.asList(incoming), false));
+        alerts.update(p("jd", "alert-order", "", "", "运输中", 10));
+        check(alerts.hasNewPickup(java.util.Arrays.asList(incoming), true));
+        alerts.update(incoming);
+        check(!alerts.hasNewPickup(java.util.Arrays.asList(incoming), true));
         c.clear(); check(c.sorted().isEmpty());
         System.out.println("Package status and conservative shipment deduplication passed");
     }
