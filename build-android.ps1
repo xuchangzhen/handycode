@@ -90,6 +90,8 @@ Invoke-Javac (Join-Path $buildRoot 'javac-tests.log') @('-encoding','UTF-8','--r
     (Join-Path $sourceRoot 'java\com\fairycrane\handycode\logistics\PackageRecord.java'),
     (Join-Path $sourceRoot 'java\com\fairycrane\handycode\logistics\PackageCollection.java'),
     (Join-Path $projectRoot 'tests\PackageCollectionTest.java'),
+    (Join-Path $sourceRoot 'java\com\fairycrane\handycode\update\UpdatePolicy.java'),
+    (Join-Path $projectRoot 'tests\UpdatePolicyTest.java'),
     (Join-Path $projectRoot 'tests\JdUrlPolicyTest.java'),
     (Join-Path $projectRoot 'tests\SiteClearQueueTest.java'),
     (Join-Path $projectRoot 'tests\UrlPolicyTest.java'),
@@ -104,6 +106,7 @@ Invoke-Checked $java @('-cp',$testClasses,'SiteClearQueueTest')
 Invoke-Checked $java @('-cp',$testClasses,'TaobaoLoadGuardTest')
 Invoke-Checked $java @('-cp',$testClasses,'JdUrlPolicyTest')
 Invoke-Checked $java @('-cp',$testClasses,'PackageCollectionTest')
+Invoke-Checked $java @('-cp',$testClasses,'UpdatePolicyTest')
 foreach ($test in (Get-ChildItem -LiteralPath (Join-Path $projectRoot 'tests') -Filter '*.test.mjs' -File | Sort-Object Name)) {
     Invoke-Checked 'node' @($test.FullName)
 }
@@ -137,6 +140,15 @@ Invoke-Checked $java @('-jar',(Join-Path $toolRoot 'lib\apksigner.jar'),'sign','
     '--ks-key-alias','androiddebugkey','--ks-pass','pass:android','--key-pass','pass:android','--out',$finalApk,$alignedApk)
 Write-Output '6/6 Verify signature and package'
 Invoke-Checked $java @('-jar',(Join-Path $toolRoot 'lib\apksigner.jar'),'verify','--verbose',$finalApk)
+if ($Configuration -eq 'Release') {
+    $certText=& $java -jar (Join-Path $toolRoot 'lib\apksigner.jar') verify --print-certs $finalApk
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot verify release certificate.' }
+    $certMatch=[regex]::Match(($certText -join "`n"),'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)')
+    $expectedCert=(Get-Content -LiteralPath (Join-Path $projectRoot 'release-signing-cert.txt') -Raw).Trim().ToLowerInvariant()
+    if (-not $certMatch.Success -or $certMatch.Groups[1].Value.ToLowerInvariant() -ne $expectedCert) {
+        throw 'Release certificate mismatch. Use the personal release signing key; do not publish this APK.'
+    }
+}
 $badging=& (Join-Path $toolRoot 'aapt.exe') dump badging $finalApk
 if ($LASTEXITCODE -ne 0 -or -not ($badging -match "package: name='com.fairycrane.handycode'")) {
     throw 'APK package check failed.'

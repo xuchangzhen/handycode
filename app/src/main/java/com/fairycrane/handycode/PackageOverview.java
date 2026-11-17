@@ -19,14 +19,14 @@ final class PackageOverview {
     private final Context context;
     private final PackageRepository repository;
     private final boolean dark;
-    private final Runnable refreshJd, toggleNotifications, toggleBackground, toggleStartup;
+    private final Runnable refreshJd, toggleNotifications, toggleBackground, toggleStartup, checkUpdate;
     private AlertDialog overviewDialog;
     private LinearLayout body;
     private int filter;
     private String previewKind = "", previewState = "";
     private JSONArray previewRows;
-    PackageOverview(Context context, PackageRepository repository, boolean dark, Runnable refreshJd, Runnable toggleNotifications, Runnable toggleBackground, Runnable toggleStartup) {
-        this.context = context; this.repository = repository; this.dark = dark; this.refreshJd = refreshJd; this.toggleNotifications = toggleNotifications; this.toggleBackground = toggleBackground; this.toggleStartup = toggleStartup;
+    PackageOverview(Context context, PackageRepository repository, boolean dark, Runnable refreshJd, Runnable toggleNotifications, Runnable toggleBackground, Runnable toggleStartup, Runnable checkUpdate) {
+        this.context = context; this.repository = repository; this.dark = dark; this.refreshJd = refreshJd; this.toggleNotifications = toggleNotifications; this.toggleBackground = toggleBackground; this.toggleStartup = toggleStartup; this.checkUpdate = checkUpdate;
     }
     private TextView label(String text, int size) {
         TextView v = new TextView(context); v.setText(text); v.setTextSize(size);
@@ -84,6 +84,10 @@ final class PackageOverview {
         startup.setTextColor(AppTheme.accentText(dark));
         startup.setOnClickListener(v -> { toggleStartup.run(); render(); });
         body.addView(startup);
+        TextView update = label("检查应用更新", 13);
+        update.setTextColor(AppTheme.accentText(dark));
+        update.setOnClickListener(v -> { overviewDialog.dismiss(); checkUpdate.run(); });
+        body.addView(update);
         LinearLayout tabs = new LinearLayout(context);
         String[] names = {"全部", "待取", "进行中", "已完成"};
         for (int i = 0; i < names.length; i++) {

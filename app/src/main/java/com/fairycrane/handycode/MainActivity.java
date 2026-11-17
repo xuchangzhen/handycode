@@ -99,6 +99,7 @@ public final class MainActivity extends Activity {
     private PddPage pddPage;
     private JdPage jdPage;
     private PackageRepository packageRepository;
+    private AppUpdater appUpdater;
     private CainiaoPage cainiaoPage;
     private String combinedMarkup;
     private String combinedGateScript;
@@ -380,6 +381,7 @@ public final class MainActivity extends Activity {
         selected = restored >= 0 ? restored : initialTab(getIntent());
         switchMotion = new SwitchMotion(selected, PAGE_COUNT);
         packageRepository = PackageRepository.shared(this);
+        appUpdater = new AppUpdater(this);
         BackgroundJdSync.restoreSchedule(this);
         buildUi();
         applyTheme();
@@ -842,7 +844,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showPackageOverview() {
-        PackageOverview overview = new PackageOverview(this, packageRepository, isDark(), this::refreshJdOrdersFromOverview, this::toggleParcelNotifications, this::toggleJdBackground, this::toggleJdStartup);
+        PackageOverview overview = new PackageOverview(this, packageRepository, isDark(), this::refreshJdOrdersFromOverview, this::toggleParcelNotifications, this::toggleJdBackground, this::toggleJdStartup, appUpdater::check);
         overview.show();
         if (selected != TAB_TAOBAO && selected != TAB_PDD) return;
         final String kind = selected == TAB_TAOBAO ? "淘宝" : "拼多多";
@@ -872,6 +874,11 @@ public final class MainActivity extends Activity {
                 else callback.onReceiveValue(result);
             });
         }
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (appUpdater != null) appUpdater.permissionResult(requestCode);
     }
 
     private void toggleJdStartup() {

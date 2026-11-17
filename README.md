@@ -6,10 +6,10 @@
 
 HandyCode is an unofficial Android app for viewing Cainiao identity codes, Taobao and Pinduoduo pickup information, and JD identity codes and pickup codes available in JD orders.
 
-最新正式版 **0.8.2**，支持 Android 8.0（API 26）及以上，目标 API 35。
+个人维护版 **0.9.0**，支持 Android 8.0（API 26）及以上，目标 API 35。
 
-- [下载最新 APK 与查看更新说明](https://github.com/xianhe51920/handycode/releases/latest)
-- [0.8.2 更新说明](docs/releases/0.8.2.md)
+- [下载最新 APK 与查看更新说明](https://github.com/xuchangzhen/handycode/releases/latest)
+- [0.9.0 更新说明](docs/releases/0.9.0.md)
 - [版本、包大小及签名证书摘要](release.json)
 
 安装包随 GitHub Releases 分发，仓库不跟踪构建产物。下载站是独立项目，不随本仓库发布。
@@ -25,7 +25,7 @@ HandyCode is an unofficial Android app for viewing Cainiao identity codes, Taoba
 
 四个平台的入口固定为「菜鸟 → 淘宝 → 拼多多 → 京东」。身份码、包裹各自刷新；支持点击和横向滑动切换、记忆上次标签、玻璃昼夜开关、可见条码自动提亮，以及卡片下方的当前平台退出入口。
 
-0.8.2 修复京东「同意协议并登录」按钮被协议链接拦截规则误挡的问题，并完善淘宝登录框显隐识别和加载超时恢复。保留 0.8.1 的京东身份码、统一加载过渡及深浅配色功能。详情和验证边界见[更新说明](docs/releases/0.8.2.md)。
+0.9.0 增加包裹总览、可选同步和应用内检查更新；首次安装因签名变化不能覆盖原版，详见更新说明。原 0.8.2 修复京东「同意协议并登录」按钮被协议链接拦截规则误挡的问题，并完善淘宝登录框显隐识别和加载超时恢复。保留 0.8.1 的京东身份码、统一加载过渡及深浅配色功能。详情和验证边界见[更新说明](docs/releases/0.8.2.md)。
 
 ## 免责声明
 
@@ -47,7 +47,7 @@ HandyCode is an unofficial Android app for viewing Cainiao identity codes, Taoba
 
 ## 包裹总览（开发版）
 
-顶部“包裹”可查看京东订单页已经读取并缓存在本机的数据，以及当前淘宝或拼多多页面可识别的待取信息。页面响应中同时具备明确待取状态、运单号和取件码的记录可加密缓存；其他待取码只做临时预览，可能重复，不能代表账号的全部订单。京东支持手动刷新、可选的启动同步和约六小时一次的后台任务；可识别的待取变化支持可选到件通知；同步与提醒默认关闭，后台执行时间由 Android 决定。京东轨迹字段仅在官方订单页实际返回相应结构时显示，是否返回及字段正确性尚待真实账号验证。各平台订单和完整物流轨迹的统一同步尚未完成，详见 [功能差异与验证记录](docs/MIGRATION_PLAN.md)。
+顶部“包裹”中可检查应用更新，并可查看京东订单页已经读取并缓存在本机的数据，以及当前淘宝或拼多多页面可识别的待取信息。页面响应中同时具备明确待取状态、运单号和取件码的记录可加密缓存；其他待取码只做临时预览，可能重复，不能代表账号的全部订单。京东支持手动刷新、可选的启动同步和约六小时一次的后台任务；可识别的待取变化支持可选到件通知；同步与提醒默认关闭，后台执行时间由 Android 决定。京东轨迹字段仅在官方订单页实际返回相应结构时显示，是否返回及字段正确性尚待真实账号验证。各平台订单和完整物流轨迹的统一同步尚未完成，详见 [功能差异与验证记录](docs/MIGRATION_PLAN.md)。
 
 ## 隐私与登录
 
@@ -175,7 +175,7 @@ https://m.pinduoduo.net/proxy/api/api/express_trackbox/...
 - 启用 WebView 的 Cookie 和 DOM Storage，复用同一应用的默认 WebView 数据目录，不在启动、切页、退出 Activity 或覆盖更新时清空它。
 - 页面完成和应用进入后台时执行 `CookieManager.flush()`，让 Cookie 存储及时落盘；`localStorage` 等仍由浏览器按来源管理。拼多多不依赖放开第三方 Cookie，而使用上述第一方官方代理。京东订单识别只在本机 WebView 和原生卡片之间传递展示所需的信息。
 - 各平台首次打开后保留各自 WebView 与当前文档。切页只是移动、裁剪视图，停止非当前页的加载圆点动画；应用进入后台时暂停 WebView，回来后恢复。京东切到后台标签时也暂停订单及身份码的原生状态检查。
-- Release 沿用相同包名与签名，使用 `adb install -r` 覆盖安装，继续使用原沙箱数据。
+- 后续由相同个人密钥签名的 Release 可使用 `adb install -r` 覆盖安装；0.9.0 与原作者签名不同，不能覆盖原版。
 
 `flush()` 不会延长官方 Cookie 的过期时间，也不会把会话 Cookie 变成永久凭据。卸载、清除应用数据、主动退出、服务端会话失效或风控要求重新验证时，仍需要登录；电脑浏览器和官方 App 的会话也不会自动同步给本应用。
 
@@ -210,18 +210,27 @@ https://m.pinduoduo.net/proxy/api/api/express_trackbox/...
 
 退出时关闭当前平台旧网页，再用 AndroidX WebKit 的按站点删除能力清理其 Cookie、JS 存储和缓存，完成后打开登录入口。淘宝范围为项目允许的五个登录站点，拼多多为 `pinduoduo.net`，京东为 `jd.com`。不会调用全局 Cookie / WebStorage 清理来退出单个平台。WebView 不支持该能力时提示更新。
 
-## 构建 Release
+## 个人版签名与应用内更新
+
+0.9.0 改用个人签名，不能覆盖原作者签名的旧版；旧版也没有应用内更新入口。后续版本需保留相同包名、提高版本号并使用同一私钥，才能从“包裹 → 检查应用更新”覆盖安装。下载来自本项目 GitHub Release，校验 SHA-256、包名、版本和证书后由系统安装器确认。新增安装应用权限用于此流程。
+
+macOS 的个人签名密钥和密码保存在 `~/Library/Application Support/HandyCode/Signing/`，不可提交或分享；请自行安全备份。`release-signing-cert.txt` 仅记录公开证书指纹，macOS 发布构建会校验它。密钥遗失后将无法继续覆盖更新。
+
+```bash
+npm ci --ignore-scripts
+./tools/build-android-macos-release.sh
+```
+
+## 原项目的 Windows 构建说明
 
 需要 JDK 17+、Android SDK Platform 35、Build Tools 36.0.0、Node.js 24+。不依赖 Gradle：`aapt2 → javac → D8 → zipalign → apksigner`。
 
 ```powershell
 npm ci --ignore-scripts
-.\build-android.ps1 -Configuration Release -AndroidSdk 'D:\path\to\SDK' -JavaHome 'D:\path\to\JDK'
+.\build-android.ps1 -Configuration Debug -AndroidSdk 'D:\path\to\SDK' -JavaHome 'D:\path\to\JDK'
 ```
 
-默认即为 Release；`-Configuration Debug` 可单独生成开发产物。Release 显式 `android:debuggable="false"`，WebView 调试也始终关闭。产物同步到根目录与 `dist/`，并生成 SHA256 与 `release.json`。
-
-**签名延续原调试期证书**，用于兼容已有安装；本机密钥仍位于 `.local/debug.keystore`，不进入 Git 或 APK。Release 构建在缺少该密钥时会停止，避免悄悄生成另一把密钥。应用商店发布需另行规划生产签名与迁移。
+原 Windows 脚本仍采用原项目的调试密钥路径；Release 增加了个人证书指纹检查，证书不匹配时会拒绝发布。Windows 接入新个人密钥的构建流程尚未验证，个人版发布请使用上面的 macOS 脚本。Release 的 `android:debuggable` 为 `false`，WebView 调试关闭。
 
 AndroidX WebKit 精简库随仓库提供并在构建前校验 SHA256；其来源、Apache 许可和离线重建方式见 [依赖说明](third_party/androidx-webkit-1.13.0/README.md)。
 
