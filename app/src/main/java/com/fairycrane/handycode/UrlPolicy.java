@@ -32,6 +32,14 @@ public final class UrlPolicy {
         return uri != null && "m.pinduoduo.net".equalsIgnoreCase(uri.getHost());
     }
 
+    public static String pddFlow(String raw) {
+        URI uri = httpsUri(raw);
+        if (uri == null || !"m.pinduoduo.net".equalsIgnoreCase(uri.getHost())) return null;
+        if ("/mdkd/add-package".equals(uri.getPath())) return "package";
+        if ("/mdkd/cellPhoneList".equals(uri.getPath())) return "phone";
+        return null;
+    }
+
     public static boolean isTaobaoPhonePage(String raw) {
         URI uri = httpsUri(raw);
         return uri != null && "pages-fast.m.taobao.com".equalsIgnoreCase(uri.getHost()) && uri.getPath() != null

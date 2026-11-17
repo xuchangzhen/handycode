@@ -19,6 +19,10 @@ public final class PddUrlPolicyTest {
             expect(true, UrlPolicy.isPddAllowed(url));
         for (String url : new String[]{null,"http://m.pinduoduo.net/","https://m.pinduoduo.net.evil.example/","https://name@m.pinduoduo.net/","https://m.pinduoduo.net:444/","https://api.pinduoduo.com/","https://mobile.yangkeduo.com/","pinduoduo://com.xunmeng.pinduoduo/"})
             expect(false, UrlPolicy.isPddAllowed(url));
+        expect(true, "package".equals(UrlPolicy.pddFlow("https://m.pinduoduo.net/mdkd/add-package?from=test")));
+        expect(true, "phone".equals(UrlPolicy.pddFlow("https://m.pinduoduo.net/mdkd/cellPhoneList")));
+        for (String url : new String[]{null,"https://m.pinduoduo.net/mdkd/package","https://m.pinduoduo.net/mdkd/cellPhoneList/other","https://m.pinduoduo.net.evil.example/mdkd/add-package","http://m.pinduoduo.net/mdkd/add-package"})
+            expect(true, UrlPolicy.pddFlow(url) == null);
         expect(true, UrlPolicy.isPddAppBundle("https://pfile.pddpic.com/mdkd/mdkd/_next/static/chunks/pages/_app-21fd7eb3eb3caac5.js"));
         expect(true, "identity".equals(UrlPolicy.pddRefreshPart("https://pfile.pddpic.com/mdkd/mdkd/_next/static/chunks/1235-91966cd87947ff3c.js")));
         expect(true, "parcels".equals(UrlPolicy.pddRefreshPart("https://pfile.pddpic.com/mdkd/mdkd/_next/static/chunks/8905-86d1ed3163cf59c9.js")));

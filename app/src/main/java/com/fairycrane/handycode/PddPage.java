@@ -33,6 +33,8 @@ final class PddPage extends LinearLayout {
     private WebView web;
     private final TextView status;
     private final LinearLayout actions;
+    private final LinearLayout flowBar;
+    private final TextView flowBack, flowTitle;
     private final FrameLayout content;
     private final PickupLoadingView cover;
     private final Button retryBtn, clientBtn;
@@ -102,6 +104,21 @@ final class PddPage extends LinearLayout {
         actions.addView(clientBtn);
         addView(actions);
         actions.setVisibility(View.GONE);
+        flowBar = new LinearLayout(context);
+        flowBar.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        flowBar.setPadding(dp(12), 0, dp(12), 0);
+        flowBack = new TextView(context);
+        flowBack.setText("‹  返回"); flowBack.setTextSize(14);
+        flowBack.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        flowBack.setMinHeight(dp(48)); flowBack.setPadding(dp(4), 0, dp(12), 0);
+        flowBack.setContentDescription("返回拼多多主页");
+        flowBack.setOnClickListener(v -> returnToPickup());
+        flowBar.addView(flowBack);
+        flowTitle = new TextView(context); flowTitle.setTextSize(16);
+        flowTitle.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        flowBar.addView(flowTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        addView(flowBar, new LinearLayout.LayoutParams(-1, dp(52)));
+        flowBar.setVisibility(View.GONE);
         content = new FrameLayout(context);
         content.setBackgroundColor(AppTheme.bg(dark));
         cover = new PickupLoadingView(context, true);
@@ -131,6 +148,9 @@ final class PddPage extends LinearLayout {
         setBackgroundColor(AppTheme.bg(dark));
         if (content != null) content.setBackgroundColor(AppTheme.bg(dark));
         actions.setBackgroundColor(AppTheme.surface(dark));
+        flowBar.setBackgroundColor(AppTheme.surface(dark));
+        flowBack.setTextColor(AppTheme.accentText(dark));
+        flowTitle.setTextColor(AppTheme.ink(dark));
         status.setTextColor(AppTheme.muted(dark));
         retryBtn.setTextColor(AppTheme.accentText(dark));
         clientBtn.setTextColor(AppTheme.accentText(dark));
@@ -248,6 +268,22 @@ final class PddPage extends LinearLayout {
         return UrlPolicy.isPddAllowed(url) && "/mdkd/package".equals(android.net.Uri.parse(url).getPath());
     }
 
+    private boolean isFlowUrl(String url) {
+        return UrlPolicy.pddFlow(url) != null;
+    }
+
+    private void updateFlowBar(String url) {
+        boolean show = isFlowUrl(url);
+        flowBar.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) flowTitle.setText("package".equals(UrlPolicy.pddFlow(url)) ? "添加包裹" : "手机号管理");
+    }
+
+    private void returnToPickup() {
+        if (web == null || destroyed) return;
+        layoutWorkflow = false;
+        web.loadUrl(ENTRY);
+    }
+
     private void applyViewport(WebView view, boolean cards) {
         WebSettings settings = view.getSettings();
         boolean officialViewport = !cards;
@@ -348,6 +384,7 @@ final class PddPage extends LinearLayout {
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
                 final long expected = ++navigation;
+                updateFlowBar(url);
                 pageCommitted = false;
                 boolean login = UrlPolicy.isPddLoginPage(url);
                 if (login) sessionChanged.accept(false);
@@ -377,6 +414,7 @@ final class PddPage extends LinearLayout {
             }
             @Override public void onPageCommitVisible(WebView view, String url) {
                 if (destroyed || web != view || !UrlPolicy.isPddAllowed(url)) return;
+                updateFlowBar(url);
                 pageCommitted = true;
                 packageNavigation = isPackageUrl(url);
                 prepareLoginClientButton(view, url);
@@ -387,6 +425,7 @@ final class PddPage extends LinearLayout {
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (destroyed || web != view || !UrlPolicy.isPddAllowed(url) || !url.equals(view.getUrl())) return;
+                updateFlowBar(url);
                 CookieManager.getInstance().flush();
                 prepareLoginClientButton(view, url);
                 syncDark(view);
@@ -404,6 +443,11 @@ final class PddPage extends LinearLayout {
                 if (UrlPolicy.isPddAllowed(url) && android.net.Uri.parse(url).getPath().startsWith("/mdkd/")) {
                     status.setText(bundleAdjusted ? "官方身份码网页" : "网页兼容未确认，请点重试");
                 }
+            }
+            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+                if (destroyed || web != view) return;
+                updateFlowBar(url);
+                if (isFlowUrl(url)) syncDark(view);
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) { actions.setVisibility(View.VISIBLE); status.setText("网页未打开，请检查网络后重试"); }
@@ -523,6 +567,10 @@ final class PddPage extends LinearLayout {
     }
 
     boolean goBack() {
+        if (web != null && isFlowUrl(web.getUrl())) {
+            returnToPickup();
+            return true;
+        }
         if (layoutWorkflow && web != null) {
             web.evaluateJavascript("window.HandyPddLayout&&window.HandyPddLayout.back()", null);
             return true;

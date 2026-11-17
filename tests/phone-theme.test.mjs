@@ -69,8 +69,9 @@ for (const [host, path] of [
 }
 {
  const {window,document}=fixture('m.pinduoduo.net','/mdkd/add-package');
- document.body.innerHTML='<div class="index_add-package-package__fixture"><textarea placeholder="完整手机号/取件码/完整运单号">WAYBILL-FIXTURE</textarea><div class="submit-btn">添加</div></div>';
+ document.body.innerHTML='<div class="index_add-package-package__fixture"><div class="text-area-wrap"><div><div class="text-area rm-textarea-item"><div class="rm-textarea-control"><textarea placeholder="完整手机号/取件码/完整运单号">WAYBILL-FIXTURE</textarea></div></div></div><div class="submit-btn">添加</div></div></div>';
  const input=document.querySelector('textarea');
+ const submit=document.querySelector('.submit-btn');let clicks=0;submit.addEventListener('click',()=>clicks++);
  window.HandyCodePhoneTheme.setDark(true);
  assert.equal(input.placeholder,'请输入完整运单号');
  assert.equal(input.value,'WAYBILL-FIXTURE');
@@ -80,7 +81,10 @@ for (const [host, path] of [
  assert.equal(document.documentElement.dataset.hcPackageForm,'pdd');
  const css=document.getElementById('hc-phone-theme').textContent;
  assert.match(css,/\.selected-station-container,\.text-area/);
+ assert.match(css,/\.text-area-wrap \.submit-btn/);
+ assert.match(css,/\.text-area-wrap::before/);
  assert.match(css,/prefers-reduced-motion:reduce/);
- assert.ok(document.querySelector('.submit-btn'),'The official submit action remains in place');
+ assert.equal(document.querySelector('.submit-btn'),submit,'The official submit action remains in place');
+ submit.click();assert.equal(clicks,1,'The original submit handler remains attached');
 }
 console.log('PASS: scoped phone forms, reversible themes, idempotence, unchanged inputs, disabled state and official handlers');
