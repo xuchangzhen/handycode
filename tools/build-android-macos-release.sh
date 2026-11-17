@@ -33,5 +33,10 @@ output="$project/dist/HandyCode-$version-release.apk"
 java -jar "$bt/lib/apksigner.jar" sign --ks "$key" --ks-key-alias handycode-release --ks-pass env:HANDYCODE_RELEASE_PASSWORD --key-pass env:HANDYCODE_RELEASE_PASSWORD --out "$output" "$work/aligned.apk"
 java -jar "$bt/lib/apksigner.jar" verify --verbose --print-certs "$output"
 "$bt/aapt" dump badging "$output" | head -6
-shasum -a 256 "$output"
-printf 'Release APK: %s\n' "$output"
+named="$project/dist/YishiBaoguo-$version.apk"
+cp "$output" "$named"
+(cd "$project/dist" && shasum -a 256 "YishiBaoguo-$version.apk" > "YishiBaoguo-$version.apk.sha256")
+(cd "$project/dist" && shasum -a 256 "HandyCode-$version-release.apk" > "HandyCode-$version-release.apk.sha256")
+shasum -a 256 "$named"
+printf 'Release APK: %s\n' "$named"
+printf 'Compatibility APK: %s\n' "$output"

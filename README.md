@@ -214,6 +214,8 @@ https://m.pinduoduo.net/proxy/api/api/express_trackbox/...
 
 0.9.0 改用个人签名，不能覆盖原作者签名的旧版；旧版也没有应用内更新入口。驿拾包裹继续使用原个人版包名和更新地址；后续版本需保留相同包名、提高版本号并使用同一私钥，才能从“包裹 → 检查应用更新”覆盖安装。下载来自本项目 GitHub Release，校验 SHA-256、包名、版本和证书后由系统安装器确认。新增安装应用权限用于此流程。
 
+GitHub Release 的公开下载项显示为“驿拾包裹”，实际附件文件名使用拼音；旧版自动更新兼容文件保留原技术文件名，不需要手动下载。
+
 macOS 的个人签名密钥和密码保存在 `~/Library/Application Support/HandyCode/Signing/`，不可提交或分享；请自行安全备份。`release-signing-cert.txt` 仅记录公开证书指纹，macOS 发布构建会校验它。密钥遗失后将无法继续覆盖更新。
 
 ```bash

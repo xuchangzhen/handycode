@@ -10,5 +10,7 @@
   "bytes": 613089,
   "minSdk": 26,
   "targetSdk": 35,
-  "signerCertificateSha256": "ad8a928134eaa07b9d96b68baad859f30a567711089cd223f956ef0c60af1177"
+  "signerCertificateSha256": "ad8a928134eaa07b9d96b68baad859f30a567711089cd223f956ef0c60af1177",
+  "publicFile": "YishiBaoguo-0.9.1.apk",
+  "publicDisplayName": "驿拾包裹-0.9.1.apk"
 }
