@@ -32,6 +32,16 @@ public final class UrlPolicyTest {
                 || UrlPolicy.isTaobaoAddPhonePage(UrlPolicy.TAOBAO_ENTRY)
                 || UrlPolicy.isTaobaoAddPhonePage(addPhone.replace("pages-fast.m.taobao.com", "login.taobao.com")))
             throw new AssertionError("The nested phone window must start at the official add-phone form.");
+        String h5 = "https://page.cainiao.com/guoguo/app-myexpress-taobao/";
+        if (!UrlPolicy.isCainiaoH5Entry(h5) || !UrlPolicy.isCainiaoH5Entry(h5 + "?test=1")
+                || UrlPolicy.isCainiaoH5Entry(h5 + "extra") || UrlPolicy.isCainiaoH5Entry(h5.replace("https:", "http:"))
+                || UrlPolicy.isCainiaoH5Entry(h5.replace("page.cainiao.com", "page.cainiao.com.evil.example")))
+            throw new AssertionError("Cainiao H5 entry scope mismatch");
+        for (String url : new String[]{h5, "https://cn.alicdn.com/fixture.js", "https://api.m.taobao.com/fixture", "https://login.alipay.com/"})
+            if (!UrlPolicy.isCainiaoH5Resource(url)) throw new AssertionError("Official H5 resource rejected");
+        for (String url : new String[]{null, "http://page.cainiao.com/", "https://page.cainiao.com.evil.example/",
+                "https://evil.example/", "https://x@cainiao.com/", "https://cainiao.com:444/", "file:///tmp/file"})
+            if (UrlPolicy.isCainiaoH5Resource(url)) throw new AssertionError("Foreign H5 resource accepted");
         System.out.println("PASS: " + checked + " Taobao navigation allowlist cases.");
     }
 }

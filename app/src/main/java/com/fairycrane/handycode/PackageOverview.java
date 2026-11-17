@@ -36,7 +36,7 @@ final class PackageOverview {
     private final Context context;
     private final PackageRepository repository;
     private final boolean dark;
-    private final Runnable refreshJd, toggleNotifications, toggleBackground, toggleStartup, checkUpdate;
+    private final Runnable refreshJd, toggleNotifications, toggleBackground, toggleStartup, checkUpdate, viewCainiao, openCainiao;
     private final PathInterpolator ease = new PathInterpolator(.2f, .7f, .2f, 1f);
     private Dialog overviewDialog;
     private LinearLayout panel, header, content;
@@ -48,10 +48,12 @@ final class PackageOverview {
     private JSONArray previewRows;
 
     PackageOverview(Context context, PackageRepository repository, boolean dark, Runnable refreshJd,
-            Runnable toggleNotifications, Runnable toggleBackground, Runnable toggleStartup, Runnable checkUpdate) {
+            Runnable toggleNotifications, Runnable toggleBackground, Runnable toggleStartup, Runnable checkUpdate,
+            Runnable viewCainiao, Runnable openCainiao) {
         this.context = context; this.repository = repository; this.dark = dark;
         this.refreshJd = refreshJd; this.toggleNotifications = toggleNotifications;
         this.toggleBackground = toggleBackground; this.toggleStartup = toggleStartup; this.checkUpdate = checkUpdate;
+        this.viewCainiao = viewCainiao; this.openCainiao = openCainiao;
     }
     private int dp(float value) { return (int)(value * context.getResources().getDisplayMetrics().density + .5f); }
     private TextView text(String value, float size, int color, boolean bold) {
@@ -169,6 +171,13 @@ final class PackageOverview {
         statusLine(sync, "京东", repository.jdState(), repository.lastJdSuccess());
         statusLine(sync, "淘宝", "仅部分待取信息", repository.stationTime("淘宝"));
         statusLine(sync, "拼多多", "仅部分待取信息", repository.stationTime("拼多多"));
+        statusLine(sync, "菜鸟", "独立同步未接入；网页可能仅显示部分包裹", 0);
+        LinearLayout cainiaoActions = new LinearLayout(context);
+        cainiaoActions.setGravity(Gravity.END);
+        TextView web = action("查看菜鸟网页"); web.setOnClickListener(v -> close(viewCainiao)); cainiaoActions.addView(web);
+        TextView app = action("打开菜鸟 App"); app.setOnClickListener(v -> close(openCainiao));
+        LinearLayout.LayoutParams appLp = new LinearLayout.LayoutParams(-2, -2); appLp.leftMargin = dp(8); cainiaoActions.addView(app, appLp);
+        sync.addView(cainiaoActions);
         TextView info = text(showInfo ? "收起同步说明  ∧" : "查看同步说明  ›", 12, AppTheme.accentText(dark), true);
         info.setPadding(0, dp(8), 0, dp(4)); info.setMinHeight(dp(36));
         info.setOnClickListener(v -> { showInfo = !showInfo; render(true); }); sync.addView(info);

@@ -32,6 +32,22 @@ public final class UrlPolicy {
         return uri != null && "m.pinduoduo.net".equalsIgnoreCase(uri.getHost());
     }
 
+    /** Domains required by the official Cainiao H5 and its Alibaba login/assets. */
+    public static boolean isCainiaoH5Resource(String raw) {
+        URI uri = httpsUri(raw);
+        if (uri == null) return false;
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        for (String root : new String[]{"cainiao.com", "taobao.com", "tmall.com", "alipay.com", "alibaba.com", "alicdn.com"})
+            if (host.equals(root) || host.endsWith("." + root)) return true;
+        return false;
+    }
+
+    public static boolean isCainiaoH5Entry(String raw) {
+        URI uri = httpsUri(raw);
+        return uri != null && "page.cainiao.com".equalsIgnoreCase(uri.getHost())
+            && "/guoguo/app-myexpress-taobao/".equals(uri.getPath());
+    }
+
     public static String pddFlow(String raw) {
         URI uri = httpsUri(raw);
         if (uri == null || !"m.pinduoduo.net".equalsIgnoreCase(uri.getHost())) return null;

@@ -845,7 +845,9 @@ public final class MainActivity extends Activity {
     }
 
     private void showPackageOverview() {
-        PackageOverview overview = new PackageOverview(this, packageRepository, isDark(), this::refreshJdOrdersFromOverview, this::toggleParcelNotifications, this::toggleJdBackground, this::toggleJdStartup, appUpdater::check);
+        PackageOverview overview = new PackageOverview(this, packageRepository, isDark(), this::refreshJdOrdersFromOverview, this::toggleParcelNotifications, this::toggleJdBackground, this::toggleJdStartup, appUpdater::check,
+            () -> new CainiaoPackageConnector(this, isDark()).showOfficialPage(),
+            () -> new CainiaoPackageConnector(this, isDark()).openApp());
         packageOverview = overview;
         overview.show();
         if (selected != TAB_TAOBAO && selected != TAB_PDD) return;
