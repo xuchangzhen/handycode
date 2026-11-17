@@ -98,7 +98,9 @@ public final class RefreshGeometryProbe extends Instrumentation {
     }
     private void cainiao(boolean expanded) throws Exception {
         stage="Cainiao initial expanded="+expanded;
-        open("cainiao");Object page=field(activity,"cainiaoPage");waitSettled(page,true);
+        open("cainiao");
+        ui(()->{try{((View)field(field(activity,"cainiaoHub"),"identityTab")).performClick();}catch(Exception e){throw new RuntimeException(e);}});
+        Object page=field(activity,"cainiaoPage");waitSettled(page,true);
         WebView web=(WebView)field(page,"web");
         if(expanded) {js(web,"document.querySelector('#hc-cainiao-card [data-hc-barcode]').click()");Thread.sleep(600);}
         js(web,"HandyCodeCainiaoLayout.update(" + field(page,"dark") + ")");

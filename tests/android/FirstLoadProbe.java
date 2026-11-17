@@ -77,6 +77,7 @@ public final class FirstLoadProbe extends Instrumentation {
   Intent intent=new Intent().setClassName("com.fairycrane.handycode","com.fairycrane.handycode.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK).putExtra("provider","cainiao");
   ActivityMonitor monitor=addMonitor("com.fairycrane.handycode.MainActivity",null,false);getTargetContext().startActivity(intent);activity=waitForMonitorWithTimeout(monitor,8000);removeMonitor(monitor);check(activity!=null,"Activity launched");
   for(int i=0;i<80;i++){boolean[] focused={false};runOnMainSync(()->focused[0]=activity.hasWindowFocus());if(focused[0])break;Thread.sleep(25);}
+  ui(()->{try{((View)field(field(activity,"cainiaoHub"),"identityTab")).performClick();}catch(Exception e){throw new RuntimeException(e);}});
   cover=field(page(0),"cover");watch();
   for(int p=0;p<4;p++){stage=keys[p];if(p>0)select(p);waitReady(p);verifyIdentity(p);screenshot(p);Bundle update=new Bundle();update.putString("stream","PASS: "+stage+" first entry, constant identity height "+identityHeights[p]+"px\n");sendStatus(1,update);}
   ui(()->watching=false);check(frames>20&&fadeFrames>5,"Captured loading and reveal frames");result.putString("stream","PASS: four first entries; "+frames+" loading/reveal frames, "+fadeFrames+" aligned fade frames, "+checks+" checks\n");
